@@ -6,6 +6,127 @@
 > TFT lib base [loboris TFT library ](https://github.com/loboris/ESP32_TFT_library)
 
 ---
+## Local setup notes
+
+This project is a legacy ESP-IDF project. Use ESP-IDF v3.2.3 and the matching
+GCC 5.2.0 Xtensa toolchain; modern ESP-IDF releases do not build this code
+without porting old driver/event/TFT APIs.
+
+The setup below was tested on Arch Linux with the project checked out at:
+
+```sh
+~/workspace/M5StickC-IDF
+```
+
+### System packages
+
+Install the legacy ESP-IDF build prerequisites:
+
+```sh
+sudo pacman -S --needed gcc git make ncurses flex bison gperf
+```
+
+### ESP-IDF v3.2.3
+
+Clone ESP-IDF v3.2.3 beside the project:
+
+```sh
+mkdir -p ~/workspace/esp
+git clone -b v3.2.3 --recursive https://github.com/espressif/esp-idf.git ~/workspace/esp/esp-idf-v3.2.3
+```
+
+On modern GCC, the old ESP-IDF ncurses probe can fail with a misleading
+``ncurses`` error. Patch its generated test program to use an explicit return
+type:
+
+```sh
+sed -i 's/main() {}/int main(void) { return 0; }/' \
+  ~/workspace/esp/esp-idf-v3.2.3/tools/kconfig/lxdialog/check-lxdialog.sh
+```
+
+### ESP32 toolchain
+
+Download and extract the matching ESP32 toolchain:
+
+```sh
+cd ~/workspace/esp
+curl -L https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz \
+  -o xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
+tar -xzf xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
+```
+
+Verify the expected compiler:
+
+```sh
+export PATH=~/workspace/esp/xtensa-esp32-elf/bin:$PATH
+xtensa-esp32-elf-gcc --version
+```
+
+Expected version:
+
+```text
+xtensa-esp32-elf-gcc (crosstool-NG crosstool-ng-1.22.0-80-g6c4433a) 5.2.0
+```
+
+### Python packages
+
+Install the Python packages expected by ESP-IDF v3.2.3:
+
+```sh
+python -m pip install -r ~/workspace/esp/esp-idf-v3.2.3/requirements.txt
+```
+
+If `pkg_resources` is missing after installing requirements, pin setuptools to
+a version that still ships it:
+
+```sh
+python -m pip install 'setuptools<81'
+```
+
+### Build
+
+Use the legacy IDF and toolchain for every build shell:
+
+```sh
+cd ~/workspace/M5StickC-IDF
+export IDF_PATH=~/workspace/esp/esp-idf-v3.2.3
+export PATH=~/workspace/esp/xtensa-esp32-elf/bin:$PATH
+make -j4
+```
+
+### Flash and monitor
+
+Plug in the M5StickC or M5StickC Plus and check the serial port:
+
+```sh
+ls -l /dev/ttyUSB* /dev/ttyACM*
+```
+
+Flash at a conservative baud rate:
+
+```sh
+make flash ESPPORT=/dev/ttyUSB0 ESPBAUD=115200
+```
+
+Open the serial monitor:
+
+```sh
+make monitor ESPPORT=/dev/ttyUSB0
+```
+
+Exit the monitor with:
+
+```text
+Ctrl+]
+```
+
+### M5StickC Plus display note
+
+The original M5StickC display is 80 x 160. M5StickC Plus uses a 135 x 240
+ST7789v2 display, so code with hardcoded dimensions may need adjustment before
+the UI fills the Plus screen correctly.
+
+---
 ## File Tree
 ```
 .
